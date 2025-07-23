@@ -12,5 +12,4 @@ app.use(express.json())
 
 app.use("/api/auth", userRoutes)
 app.use("/api/transaction", transactionRoutes)
-
 module.exports = app
