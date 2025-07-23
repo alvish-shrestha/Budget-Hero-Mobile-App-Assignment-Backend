@@ -50,27 +50,6 @@ exports.registerUser = async (req, res) => {
 
         // save the user data
         await newUser.save()
-        // const mailOptions = {
-        //     from: `"Budget Hero" <${process.env.EMAIL_USER}>`,
-        //     to: email,
-        //     subject: "Welcome to Budget Hero!",
-        //     html: `
-        //         <h2>Hi ${username},</h2>
-        //         <p>Welcome to <strong>Budget Hero</strong>! 🎉</p>
-        //         <p>We’re excited to help you take control of your finances. Start tracking your expenses, saving money, and becoming your own budget hero today!</p>
-        //         <br />
-        //         <p>If you have any questions, feel free to reply to this email.</p>
-        //         <p>Best regards,<br />The Budget Hero Team</p>
-        //     `,
-        // };
-
-        // transporter.sendMail(mailOptions, (err, info) => {
-        //     if (err) {
-        //         console.error("Error sending welcome email:", err);
-        //     } else {
-        //         console.log("Welcome email sent:", info.response);
-        //     }
-        // });
         return res.status(201).json(
             {
                 "success": true,

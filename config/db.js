@@ -16,4 +16,5 @@ const connectDB = async () => {
         console.log(`Database error: ${err.message}`.red.underline.bold);
     }
 }
+
 module.exports = connectDB
