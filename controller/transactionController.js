@@ -1,4 +1,5 @@
 const Transaction = require("../models/Transaction")
+const moment = require("moment")
 const jwt = require("jsonwebtoken")
 const nodemailer = require("nodemailer")
 
@@ -15,10 +16,12 @@ exports.addTransaction = async (req, res) => {
             )
         }
 
+        const formattedDate = moment(date).format("YYYY-MM-DD");
+
         const transaction = new Transaction(
             {
                 type,
-                date,
+                date: formattedDate,
                 amount,
                 category,
                 account,
@@ -77,6 +80,10 @@ exports.updateTransaction = async (req, res) => {
     const {id} = req.params
 
     try {
+        if (req.body.date) {
+            req.body.date = moment(req.body.date).format("YYYY-MM-DD");
+        }
+
         const updatedTransaction = await Transaction.findOneAndUpdate(
             {
                 _id: id,
