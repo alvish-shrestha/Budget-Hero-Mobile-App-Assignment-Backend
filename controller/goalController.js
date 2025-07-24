@@ -45,3 +45,30 @@ exports.deleteGoal = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// Contribute Goal
+exports.contributeToGoal = async (req, res) => {
+    try {
+        const { goalId } = req.params;
+        const { amount } = req.body;
+
+        if (!amount || isNaN(amount)) {
+            return res.status(400).json({ success: false, message: 'Invalid amount' });
+        }
+
+        const goal = await Goal.findOneAndUpdate(
+            { _id: goalId, userId: req.user._id },
+            { $inc: { savedAmount: amount } },
+            { new: true }
+        );
+
+        if (!goal) {
+            return res.status(404).json({ success: false, message: 'Goal not found' });
+        }
+
+        res.status(200).json({ success: true, data: goal });
+    } catch (error) {
+        console.error('Contribution error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
