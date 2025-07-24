@@ -3,7 +3,9 @@ const Goal = require("../models/Goal");
 // Create Goal
 exports.createGoal = async (req, res) => {
     try {
-        const goal = await Goal.create({ ...req.body, userId: req.user._id });
+        const goal = await Goal.create(
+            { ...req.body, userId: req.user._id }
+        );
         res.status(201).json({ success: true, data: goal });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
