@@ -133,71 +133,73 @@ exports.loginUser = async (req, res) => {
     }
 }
 
-// const transporter = nodemailer.createTransport(
-//     {
-//         service: "gmail",
-//         auth: {
-//             user: process.env.EMAIL_USER,
-//             pass: process.env.EMAIL_PASS
-//         }
-//     }
-// )
+// Update email
+exports.updateEmail = async (req, res) => {
+    const userId = req.user._id;
+    const { email } = req.body;
 
-// exports.sendResetLink = async (req, res) => {
-//     const { email } = req.body
-//     try {
-//         const user = await User.findOne({ email })
-//         if (!user) return res.status(404).json({
-//             success: false,
-//             message: "User not found"
-//         })
-//         const token = jwt.sign({ id: user._id }, process.env.SECRET, { expiresIn: "15m" })
-//         const resetUrl = process.env.CLIENT_URL + "/reset/password/" + token
-//         const mailOptions = {
-//             from: `"Budget Hero" <${process.env.EMAIL_USER}>`,
-//             to: email,
-//             subject: "Reset your password",
-//             html: `<p>Reset your password.. ${resetUrl}</p>`
-//         }
-//         transporter.sendMail(mailOptions, (err, info) => {
-//             if (err) {
-//                 console.log(err);
-//                 return res.status(403).json({
-//                     success: false,
-//                     message: "Failed"
-//                 })
-//             }
-//             if (info) console.log(info);
-//             return res.status(200).json({
-//                 success: true,
-//                 message: "Success"
-//             })
-//         })
-//     } catch (err) {
-//         return res.status(500).json({
-//             success: false,
-//             message: "Server error"
-//         })
-//     }
-// }
+    if (!email) {
+        return res.status(400).json({ success: false, message: "Email required" });
+    }
 
-// exports.resetPassword = async (req, res) => {
-//     const { token } = req.params
-//     const { password } = req.body
+    try {
+        const existing = await User.findOne({ email });
+        if (existing) {
+            return res.status(400).json({ success: false, message: "Email already in use" });
+        }
 
-//     try {
-//         const decoded = jwt.verify(token, process.env.SECRET)
-//         const hased = await bcrypt.hash(password, 10)
-//         await User.findByIdAndUpdate(decoded.id, { password: hased })
-//         return res.status(200).json({
-//             success: true,
-//             message: "Password updated"
-//         })
-//     } catch (err) {
-//         console.log(err);
-//         return res.status(500).json({
-//             success: false,
-//             message: "Server error / Token invalid"
-//         })
-//     }
-// }
+        await User.findByIdAndUpdate(userId, { email: email.toLowerCase() });
+        return res.status(200).json({ success: true, message: "Email updated" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// Update username
+exports.updateUsername = async (req, res) => {
+    const userId = req.user._id;
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ success: false, message: "Username required" });
+    }
+
+    try {
+        const existing = await User.findOne({ username });
+        if (existing) {
+            return res.status(400).json({ success: false, message: "Username already in use" });
+        }
+
+        await User.findByIdAndUpdate(userId, { username: username.toLowerCase() });
+        return res.status(200).json({ success: true, message: "Username updated" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// Update password
+exports.updatePassword = async (req, res) => {
+    const userId = req.user._id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: "All fields required" });
+    }
+
+    try {
+        const user = await User.findById(userId);
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Old password incorrect" });
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        user.password = hashed;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "Password updated" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
