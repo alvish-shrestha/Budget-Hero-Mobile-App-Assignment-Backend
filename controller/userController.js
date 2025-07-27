@@ -2,6 +2,7 @@ const User = require("../models/User")
 const bcrypt = require("bcrypt") // maintain hashing for passwords
 const jwt = require("jsonwebtoken")
 const nodemailer = require("nodemailer")
+const crypto = require("crypto");
 
 exports.registerUser = async (req, res) => {
     const { username, email, password, confirmPassword } = req.body
@@ -201,5 +202,72 @@ exports.updatePassword = async (req, res) => {
         return res.status(200).json({ success: true, message: "Password updated" });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: "Email is required" });
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        const token = crypto.randomBytes(32).toString("hex");
+        const expireTime = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+        user.resetToken = token;
+        user.resetTokenExpires = expireTime;
+        await user.save();
+
+        const resetLink = `https://yourfrontend.com/reset-password/${token}`;
+
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASS,
+            },
+        });
+
+        const mailOptions = {
+            from: "Budget Hero <noreply@budgethero.com>",
+            to: email,
+            subject: "Password Reset",
+            html: `<p>Click the link below to reset your password. This link is valid for 15 minutes:</p><a href="${resetLink}">${resetLink}</a>`,
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        res.status(200).json({ success: true, message: "Reset link sent to email" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword)
+        return res.status(400).json({ success: false, message: "All fields are required" });
+
+    try {
+        const user = await User.findOne({
+            resetToken: token,
+            resetTokenExpires: { $gt: Date.now() },
+        });
+
+        if (!user) return res.status(400).json({ success: false, message: "Token expired or invalid" });
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        user.password = hashed;
+        user.resetToken = undefined;
+        user.resetTokenExpires = undefined;
+        await user.save();
+
+        res.status(200).json({ success: true, message: "Password successfully reset" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
     }
 };
