@@ -2,6 +2,7 @@ const User = require("../models/User")
 const bcrypt = require("bcrypt") // maintain hashing for passwords
 const jwt = require("jsonwebtoken")
 const nodemailer = require("nodemailer")
+const crypto = require("crypto");
 
 exports.registerUser = async (req, res) => {
     const { username, email, password, confirmPassword } = req.body
@@ -199,6 +200,106 @@ exports.updatePassword = async (req, res) => {
         await user.save();
 
         return res.status(200).json({ success: true, message: "Password updated" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.otp = otp;
+        user.otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+        await user.save();
+
+        // Send email
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: "Your BudgetHero OTP",
+            text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        return res.status(200).json({ success: true, message: "OTP sent to email" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+exports.verifyOtp = async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+        return res.status(400).json({ success: false, message: "Email and OTP required" });
+    }
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase(), otp });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Invalid OTP" });
+        }
+
+        if (user.otpExpiry < Date.now()) {
+            return res.status(400).json({ success: false, message: "OTP expired" });
+        }
+
+        return res.status(200).json({ success: true, message: "OTP verified" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+exports.resetPasswordWithOtp = async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+        return res.status(400).json({ success: false, message: "Missing fields" });
+    }
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase(), otp });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Invalid OTP" });
+        }
+
+        if (user.otpExpiry < Date.now()) {
+            return res.status(400).json({ success: false, message: "OTP expired" });
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        user.password = hashed;
+        user.confirmPassword = hashed;
+        user.otp = null;
+        user.otpExpiry = null;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "Password reset successful" });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Server error" });
     }
