@@ -282,7 +282,10 @@ exports.resetPasswordWithOtp = async (req, res) => {
     }
 
     try {
-        const user = await User.findOne({ email: email.toLowerCase(), otp });
+        const user = await User.findOne({
+            email: email.toLowerCase(),
+            otp
+        });
 
         if (!user) {
             return res.status(400).json({ success: false, message: "Invalid OTP" });
