@@ -38,7 +38,7 @@ exports.registerUser = async (req, res) => {
             )
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10) // 10 salt/complexity jaty badayo tety complex hudaii janxa
+        const hashedPassword = await bcrypt.hash(password, 10)
 
         const newUser = new User(
             {
